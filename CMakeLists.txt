@@ -4,7 +4,7 @@ project( xrootd-http/s3 )
 
 option( XROOTD_PLUGINS_EXTERNAL_GTEST "Use an external/pre-installed copy of GTest" OFF )
 option( VALGRIND "Run select unit tests under valgrind" OFF )
-option( ENABLE_ASAN "Build the plugin with the address sanitizer" OFF )
+option( ASAN "Build the plugin with the address sanitizer" OFF )
 
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake )
 if( "${CMAKE_BUILD_TYPE}" STREQUAL "" )
@@ -20,7 +20,7 @@ if(VALGRIND)
   find_program(VALGRIND_BIN valgrind REQUIRED)
 endif()
 
-if( ENABLE_ASAN )
+if(ASAN)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
   set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address")
@@ -146,16 +146,6 @@ target_link_libraries(XrdOssGlobusObj ${XRootD_UTILS_LIBRARIES} ${XRootD_SERVER_
 add_library(XrdOssGlobus MODULE "$<TARGET_OBJECTS:XrdOssGlobusObj>")
 target_link_libraries(XrdOssGlobus XrdOssGlobusObj)
 
-#######################
-## libXrdOssPosc     ##
-#######################
-add_library( XrdOssPoscObj OBJECT src/Posc.cc )
-set_target_properties( XrdOssPoscObj PROPERTIES POSITION_INDEPENDENT_CODE ON )
-target_link_libraries( XrdOssPoscObj XRootD::XrdServer XRootD::XrdUtils Threads::Threads std::atomic )
-
-add_library( XrdOssPosc MODULE "$<TARGET_OBJECTS:XrdOssPoscObj>" )
-target_link_libraries( XrdOssPosc XrdOssPoscObj )
-
 # Customize module's suffix and, on Linux, hide unnecessary symbols
 if( APPLE )
   set_target_properties( XrdS3 PROPERTIES OUTPUT_NAME "XrdS3-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" )
@@ -164,7 +154,6 @@ if( APPLE )
   set_target_properties( XrdOssHttp PROPERTIES OUTPUT_NAME "XrdOssHttp-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" )
   set_target_properties( XrdOssFilter PROPERTIES OUTPUT_NAME "XrdOssFilter-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" )
   set_target_properties( XrdOssGlobus PROPERTIES OUTPUT_NAME "XrdOssGlobus-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" )
-  set_target_properties( XrdOssPosc PROPERTIES OUTPUT_NAME "XrdOssPosc-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" )
 else()
   set_target_properties( XrdS3 PROPERTIES OUTPUT_NAME "XrdS3-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" LINK_FLAGS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/configs/export-lib-symbols" )
   set_target_properties( XrdHTTPServer PROPERTIES OUTPUT_NAME "XrdHTTPServer-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" LINK_FLAGS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/configs/export-lib-symbols" )
@@ -172,17 +161,16 @@ else()
   set_target_properties( XrdOssHttp PROPERTIES OUTPUT_NAME "XrdOssHttp-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" LINK_FLAGS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/configs/export-lib-symbols" )
   set_target_properties( XrdOssFilter PROPERTIES OUTPUT_NAME "XrdOssFilter-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" LINK_FLAGS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/configs/export-lib-symbols" )
   set_target_properties( XrdOssGlobus PROPERTIES OUTPUT_NAME "XrdOssGlobus-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" LINK_FLAGS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/configs/export-lib-symbols" )
-  set_target_properties( XrdOssPosc PROPERTIES OUTPUT_NAME "XrdOssPosc-${XRootD_PLUGIN_VERSION}" SUFFIX ".so" LINK_FLAGS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/configs/export-lib-symbols" )
 endif()
 
 include(GNUInstallDirs)
 
 install(
-  TARGETS XrdS3 XrdHTTPServer XrdOssS3 XrdOssHttp XrdOssFilter XrdOssGlobus XrdOssPosc
+  TARGETS XrdS3 XrdHTTPServer XrdOssS3 XrdOssHttp XrdOssFilter XrdOssGlobus
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-if( ENABLE_TESTS )
+if( BUILD_TESTING )
   # Create shared libraries for testing from the existing objects
   add_library(XrdS3Testing SHARED "$<TARGET_OBJECTS:XrdS3Obj>")
   target_link_libraries(XrdS3Testing XrdS3Obj)
@@ -199,10 +187,6 @@ if( ENABLE_TESTS )
   add_library(XrdOssGlobusTesting SHARED "$<TARGET_OBJECTS:XrdOssGlobusObj>")
   target_link_libraries(XrdOssGlobusTesting XrdOssGlobusObj)
   target_include_directories(XrdOssGlobusTesting INTERFACE ${XRootD_INCLUDE_DIRS})
-
-  add_library( XrdOssPoscTesting SHARED "$<TARGET_OBJECTS:XrdOssPoscObj>" )
-  target_link_libraries( XrdOssPoscTesting XrdOssPoscObj )
-  target_include_directories( XrdOssPoscTesting INTERFACE ${XRootD_INCLUDE_DIRS} )
 
   find_program(GoWrk go-wrk HINTS "$ENV{HOME}/go/bin")
   if( NOT GoWrk )
