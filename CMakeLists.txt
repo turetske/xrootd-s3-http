@@ -196,7 +196,7 @@ if( BUILD_TESTING )
     if( go_install_result EQUAL 0 )
       find_program(GoWrk go-wrk HINTS "$ENV{HOME}/go/bin")
     else()
-      message( WARNING "Failed to install the go-wrk binary" )
+      message(ERROR "Failed to install the go-wrk binary" )
     endif()
   endif()
 

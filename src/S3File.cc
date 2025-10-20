@@ -96,7 +96,7 @@ int S3File::Open(const char *path, int Oflag, mode_t Mode, XrdOucEnv &env) {
 	if (Oflag & O_APPEND) {
 		m_log.Log(LogMask::Info, "Open", "File opened for append:", path);
 	}
-	if ((Oflag & O_ACCMODE) != O_RDONLY) {
+	if (Oflag & (O_RDWR | O_WRONLY)) {
 		m_write_lk.reset(new std::mutex);
 	}
 
@@ -139,7 +139,7 @@ int S3File::Open(const char *path, int Oflag, mode_t Mode, XrdOucEnv &env) {
 
 	// This flag is not set when it's going to be a read operation
 	// so we check if the file exists in order to be able to return a 404
-	if (((Oflag & O_ACCMODE) == O_RDONLY) || (Oflag & O_APPEND)) {
+	if (!Oflag || (Oflag & O_APPEND)) {
 		auto res = Fstat(nullptr);
 		if (res < 0) {
 			return res;

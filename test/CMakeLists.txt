@@ -187,7 +187,6 @@ if (MINIO_BIN AND MC_BIN)
   # Stress-test using the go-wrk binary #
   #######################################
 
-  if( GoWrk )
   add_test( NAME S3::s3_basic::gowrk_test
     COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/s3-gowrk-test.sh" s3_basic )
 
@@ -197,6 +196,5 @@ if (MINIO_BIN AND MC_BIN)
       ENVIRONMENT "BINARY_DIR=${CMAKE_BINARY_DIR};WRK_BIN=${GoWrk}"
       ATTACHED_FILES_ON_FAIL "${S3_BASIC_TEST_LOGS}"
   )
-  endif()
 
 endif()

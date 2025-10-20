@@ -87,7 +87,7 @@ TEST(TestHTTPFile, TestList) {
 	fd->StatRet(statStruct);
 
 	rc = fd->Open("/testdir", O_RDONLY, 0700, env);
-	ASSERT_EQ(rc, -EISDIR);
+	ASSERT_EQ(rc, -21);
 	ASSERT_EQ(fd->Opendir("/testdir", env), 0);
 
 	char buf[255];
@@ -101,12 +101,12 @@ TEST(TestHTTPFile, TestXfer) {
 
 	struct stat si;
 	XrdOucEnv env;
-	auto rc = fs.Stat("/testdir/hello_world.txt", &si, 0, &env);
+	auto rc = fs.Stat("/hello_world.txt", &si, 0, &env);
 	ASSERT_EQ(rc, 0);
 	ASSERT_EQ(si.st_size, 13);
 
 	std::unique_ptr<XrdOssDF> fh(fs.newFile());
-	rc = fh->Open("/testdir/hello_world.txt", O_RDONLY, 0700, env);
+	rc = fh->Open("/hello_world.txt", O_RDONLY, 0700, env);
 	ASSERT_EQ(rc, 0);
 
 	char buf[12];
