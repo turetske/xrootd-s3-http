@@ -42,7 +42,6 @@ cmake --build redhat-linux-build --verbose
 %{_libdir}/libXrdHTTPServer-5.so
 %{_libdir}/libXrdS3-5.so
 %{_libdir}/libXrdOssHttp-5.so
-%{_libdir}/libXrdOssGlobus-5.so
 %{_libdir}/libXrdOssS3-5.so
 %{_libdir}/libXrdOssFilter-5.so
 %doc README.md

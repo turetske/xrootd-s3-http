@@ -94,7 +94,9 @@ class HTTPFileSystem : public XrdOss {
 				 XrdOucEnv *env = 0) {
 		return -ENOSYS;
 	}
-	int Unlink(const char *path, int Opts = 0, XrdOucEnv *env = 0);
+	int Unlink(const char *path, int Opts = 0, XrdOucEnv *env = 0) {
+		return -ENOSYS;
+	}
 	int Lfn2Pfn(const char *Path, char *buff, int blen) { return -ENOSYS; }
 	const char *Lfn2Pfn(const char *Path, char *buff, int blen, int &rc) {
 		return nullptr;

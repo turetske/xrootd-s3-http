@@ -81,7 +81,7 @@ size_t HTTPRequest::handleResults(const void *ptr, size_t size, size_t nmemb,
 				return 0;
 			}
 		}
-		if (me->expectedResponseCode.count(me->getResponseCode()) &&
+		if (me->getResponseCode() == me->expectedResponseCode &&
 			me->requestResult() != nullptr) {
 			if (!me->m_result_buffer_initialized) {
 				me->m_result_buffer_initialized = true;
@@ -141,9 +141,6 @@ bool HTTPRequest::SendHTTPRequest(const std::string &payload) {
 	}
 
 	headers["Content-Type"] = "binary/octet-stream";
-
-	m_log.Log(LogMask::Debug, "HTTPRequest::SendHTTPRequest",
-			  "Sending request");
 
 	return sendPreparedRequest(hostUrl, payload, payload.size(), true);
 }
@@ -393,7 +390,6 @@ bool HTTPRequest::sendPreparedRequest(const std::string &uri,
 }
 
 void HTTPRequest::Tick(std::chrono::steady_clock::time_point now) {
-	m_log.Log(LogMask::Debug, "HTTPRequest::Tick", "Tick called");
 	if (!m_is_streaming) {
 		return;
 	}
@@ -551,16 +547,6 @@ bool HTTPRequest::SetupHandle(CURL *curl) {
 		}
 	}
 
-	if (httpVerb == "DELETE") {
-		rv = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
-		if (rv != CURLE_OK) {
-			this->errorCode = "E_CURL_LIB";
-			this->errorMessage =
-				"curl_easy_setopt( CURLOPT_CUSTOMREQUEST ) failed.";
-			return false;
-		}
-	}
-
 	rv = curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
 	if (rv != CURLE_OK) {
 		this->errorCode = "E_CURL_LIB";
@@ -698,11 +684,7 @@ bool HTTPRequest::SetupHandle(CURL *curl) {
 			return false;
 		}
 	}
-	m_log.Log(LogMask::Debug, "SetupHandle",
-			  "Checking if curl verbose logging is enabled");
 	if (m_log.getMsgMask() & LogMask::Dump) {
-		m_log.Log(LogMask::Dump, "SetupHandle",
-				  "Enabling curl verbose logging for URL:", m_uri.c_str());
 		rv =
 			curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debugAndDumpCallback);
 		if (rv != CURLE_OK) {
@@ -784,22 +766,16 @@ void HTTPRequest::ProcessCurlResult(CURL *curl, CURLcode rv) {
 		return;
 	}
 
-	if (!expectedResponseCode.count(responseCode)) {
-		errorCode = "E_HTTP_RESPONSE_NOT_EXPECTED";
+	if (responseCode != expectedResponseCode) {
+		formatstr(errorCode,
+				  "E_HTTP_RESPONSE_NOT_EXPECTED (response %lu != expected %lu)",
+				  responseCode, expectedResponseCode);
 		errorMessage = m_result;
 		if (errorMessage.empty()) {
-			std::ostringstream ss;
-			ss << "HTTP response was " << responseCode << ", expected one of {";
-			bool first = true;
-			for (const auto &code : expectedResponseCode) {
-				if (!first) {
-					ss << ", ";
-				}
-				first = false;
-				ss << code;
-			}
-			ss << "}, and no body was returned.";
-			errorMessage = ss.str();
+			formatstr(
+				errorMessage,
+				"HTTP response was %lu, not %lu, and no body was returned.",
+				responseCode, expectedResponseCode);
 		}
 		return;
 	}
@@ -813,14 +789,14 @@ HTTPUpload::~HTTPUpload() {}
 
 bool HTTPUpload::SendRequest(const std::string &payload) {
 	httpVerb = "PUT";
-	expectedResponseCode = {200, 201};
+	expectedResponseCode = 201;
 	return SendHTTPRequest(payload);
 }
 
 bool HTTPUpload::StartStreamingRequest(const std::string_view payload,
 									   off_t object_size) {
 	httpVerb = "PUT";
-	expectedResponseCode = {200, 201};
+	expectedResponseCode = 201;
 	headers["Content-Type"] = "binary/octet-stream";
 	return sendPreparedRequest(hostUrl, payload, object_size, false);
 }
@@ -836,7 +812,6 @@ bool HTTPUpload::ContinueStreamingRequest(const std::string_view payload,
 }
 
 void HTTPRequest::Init(XrdSysError &log) {
-	log.Log(LogMask::Debug, "HTTPRequest::Init", "called");
 	if (!m_workers_initialized) {
 		for (unsigned idx = 0; idx < CurlWorker::GetPollThreads(); idx++) {
 			m_workers.push_back(new CurlWorker(m_queue, log));
@@ -862,10 +837,9 @@ bool HTTPDownload::SendRequest(off_t offset, size_t size) {
 		formatstr(range, "bytes=%lld-%lld", static_cast<long long int>(offset),
 				  static_cast<long long int>(offset + size - 1));
 		headers["Range"] = range.c_str();
-		this->expectedResponseCode = {206};
+		this->expectedResponseCode = 206;
 	}
-	m_log.Log(LogMask::Debug, "HTTPDownload::SendRequest",
-			  "Sending GET request");
+
 	httpVerb = "GET";
 	std::string noPayloadAllowed;
 	return SendHTTPRequest(noPayloadAllowed);
@@ -877,18 +851,6 @@ HTTPHead::~HTTPHead() {}
 
 bool HTTPHead::SendRequest() {
 	httpVerb = "HEAD";
-	includeResponseHeader = true;
-	std::string noPayloadAllowed;
-	return SendHTTPRequest(noPayloadAllowed);
-}
-
-// ---------------------------------------------------------------------------
-
-HTTPDelete::~HTTPDelete() {}
-
-bool HTTPDelete::SendRequest() {
-	httpVerb = "DELETE";
-	this->expectedResponseCode = {204};
 	includeResponseHeader = true;
 	std::string noPayloadAllowed;
 	return SendHTTPRequest(noPayloadAllowed);
