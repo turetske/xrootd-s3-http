@@ -82,12 +82,11 @@ add_test(
     ${CMAKE_CURRENT_BINARY_DIR}/s3-gtest
 )
 
-gtest_add_tests(TARGET http-gtest TEST_LIST httpUnitTests)
-
-set_tests_properties( ${httpUnitTests}
-  PROPERTIES
-    ENVIRONMENT "ENV_FILE=${CMAKE_CURRENT_BINARY_DIR}/../tests/basic/setup.sh"
-    FIXTURES_REQUIRED HTTP::basic
+add_test(
+  NAME
+    http-unit
+  COMMAND
+    ${CMAKE_CURRENT_BINARY_DIR}/http-gtest "${CMAKE_BINARY_DIR}/tests/basic/setup.sh"
 )
 
 if (VALGRIND)
@@ -103,6 +102,11 @@ if (VALGRIND)
       FIXTURES_REQUIRED S3::s3_basic
   )
 endif()
+
+set_tests_properties(http-unit
+  PROPERTIES
+    FIXTURES_REQUIRED HTTP::basic
+)
 
 ######################################
 # Integration tests.

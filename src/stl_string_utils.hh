@@ -53,6 +53,3 @@ std::string urlquote(const std::string input);
 // foo/bar/// -> foo/bar
 // /a/b -> a/b
 void trimslashes(std::string &path);
-
-int parse_path(const std::string &storagePrefixStr, const char *path,
-			   std::string &object);

@@ -18,46 +18,27 @@
 
 #pragma once
 
-#include "HTTPFileSystem.hh"
-#include "logging.hh"
+#include "XrdOss/XrdOss.hh"
+#include "XrdOuc/XrdOucEnv.hh"
 
-#include <XrdOss/XrdOss.hh>
-#include <XrdOuc/XrdOucEnv.hh>
-#include <XrdSfs/XrdSfsInterface.hh>
-
-#include <map>
-#include <vector>
+class XrdSysError;
 
 class HTTPDirectory : public XrdOssDF {
   public:
-	HTTPDirectory(XrdSysError &log, HTTPFileSystem &oss);
+	HTTPDirectory(XrdSysError &log) : m_log(log) {}
+
 	virtual ~HTTPDirectory() {}
 
-	virtual int Opendir(const char *path, XrdOucEnv &env) override;
-
-	virtual int Readdir(char *buff, int blen) override;
-
-	virtual int StatRet(struct stat *statStruct) override {
-		mystat = statStruct;
-		return SFS_OK;
+	virtual int Opendir(const char *path, XrdOucEnv &env) override {
+		return -ENOSYS;
 	}
+
+	virtual int Readdir(char *buff, int blen) override { return -ENOSYS; }
+
+	virtual int StatRet(struct stat *statStruct) override { return -ENOSYS; }
 
 	virtual int Close(long long *retsz = 0) override { return -ENOSYS; }
 
-  private:
-	struct Entry {
-		std::string mode;
-		std::string flags;
-		std::string size;
-		std::string modified;
-		std::string name;
-	};
-
-	void parseHTMLToListing(const std::string &htmlContent);
-	std::string extractHTMLTable(const std::string &htmlContent);
-
-	struct stat *mystat;
+  protected:
 	XrdSysError &m_log;
-	HTTPFileSystem &m_oss;
-	std::vector<std::pair<std::string, struct stat>> m_remoteList;
 };

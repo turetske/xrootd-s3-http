@@ -74,8 +74,6 @@ bool HTTPFileSystem::handle_required_config(const std::string &name_from_config,
 }
 
 bool HTTPFileSystem::Config(XrdSysLogger *lp, const char *configfn) {
-	m_remote_flavor = "auto";
-
 	XrdOucEnv myEnv;
 	XrdOucGatherConf httpserver_conf("httpserver.", &m_log);
 	int result;
@@ -110,8 +108,6 @@ bool HTTPFileSystem::Config(XrdSysLogger *lp, const char *configfn) {
 									http_host_url) ||
 			!handle_required_config(attribute, "httpserver.url_base", value,
 									m_url_base) ||
-			!handle_required_config(attribute, "httpserver.remote_flavor",
-									value, m_remote_flavor) ||
 			!handle_required_config(attribute, "httpserver.storage_prefix",
 									value, m_storage_prefix) ||
 			!handle_required_config(attribute, "httpserver.token_file", value,
@@ -131,12 +127,6 @@ bool HTTPFileSystem::Config(XrdSysLogger *lp, const char *configfn) {
 								 "httpserver.url_base are required");
 			return false;
 		}
-		if (m_remote_flavor != "http" && m_remote_flavor != "webdav" &&
-			m_remote_flavor != "auto") {
-			m_log.Emsg("Config", "Invalid httpserver.remote_flavor specified; "
-								 "must be one of: 'http', 'webdav', or 'auto'");
-			return false;
-		}
 	}
 
 	if (!token_file.empty()) {
@@ -149,7 +139,7 @@ bool HTTPFileSystem::Config(XrdSysLogger *lp, const char *configfn) {
 // Object Allocation Functions
 //
 XrdOssDF *HTTPFileSystem::newDir(const char *user) {
-	return new HTTPDirectory(m_log, *this);
+	return new HTTPDirectory(m_log);
 }
 
 XrdOssDF *HTTPFileSystem::newFile(const char *user) {
@@ -160,11 +150,11 @@ int HTTPFileSystem::Stat(const char *path, struct stat *buff, int opts,
 						 XrdOucEnv *env) {
 	std::string error;
 
-	// need to forward a HEAD request to the remote server
+	m_log.Emsg("Stat", "Stat'ing path", path);
 
 	HTTPFile httpFile(m_log, this);
 	int rv = httpFile.Open(path, 0, (mode_t)0, *env);
-	if (rv && rv != -EISDIR) {
+	if (rv) {
 		m_log.Emsg("Stat", "Failed to open path:", path);
 		return rv;
 	}
