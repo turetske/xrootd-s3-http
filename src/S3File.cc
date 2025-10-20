@@ -56,12 +56,6 @@ size_t S3File::m_cache_entry_size =
 	(2 * 1024 * 1024); // Default size of the cache's buffer
 XrdXrootdGStream *S3File::m_gstream = nullptr;
 
-std::mutex S3File::m_shutdown_lock;
-std::condition_variable S3File::m_shutdown_requested_cv;
-bool S3File::m_shutdown_requested = false;
-std::condition_variable S3File::m_shutdown_complete_cv;
-bool S3File::m_shutdown_complete =
-	true; // Starts in "true" state as the thread hasn't started
 
 std::atomic<off_t> S3File::S3Cache::m_hit_bytes{0};
 std::atomic<off_t> S3File::S3Cache::m_miss_bytes{0};
@@ -446,12 +440,11 @@ void S3File::LaunchMonitorThread(XrdSysError &log, XrdOucEnv *envP) {
 					"use `xrootd.mongstream oss ...` directive to enable it");
 			}
 		} else {
-			log.Say("Config", "XrdOssStats plugin invoked without a configured "
-							  "environment; likely an internal error");
-		}
-		m_shutdown_complete = false;
-		std::thread t(S3File::Maintenance, std::ref(log));
-		t.detach();
+				log.Say("Config", "XrdOssStats plugin invoked without a configured "
+								  "environment; likely an internal error");
+			}
+			std::thread t(S3File::Maintenance, std::ref(log));
+			t.detach();
 	});
 }
 
@@ -462,14 +455,7 @@ void S3File::Maintenance(XrdSysError &log) {
 	}
 	while (true) {
 
-		{
-			std::unique_lock lock(m_shutdown_lock);
-			m_shutdown_requested_cv.wait_for(
-				lock, sleep_duration, [] { return m_shutdown_requested; });
-			if (m_shutdown_requested) {
-				break;
-			}
-		}
+		std::this_thread::sleep_for(sleep_duration);
 
 		try {
 			CleanupTransfersOnce();
@@ -486,9 +472,6 @@ void S3File::Maintenance(XrdSysError &log) {
 					  << exc.what() << std::endl;
 		}
 	}
-	std::unique_lock lock(m_shutdown_lock);
-	m_shutdown_complete = true;
-	m_shutdown_complete_cv.notify_one();
 }
 
 void S3File::SendStatistics(XrdSysError &log) {
@@ -1206,13 +1189,6 @@ ssize_t S3File::S3Cache::Read(char *buffer, off_t offset, size_t size) {
 	return size;
 }
 
-void S3File::Shutdown() {
-	std::unique_lock lock(m_shutdown_lock);
-	m_shutdown_requested = true;
-	m_shutdown_requested_cv.notify_one();
-
-	m_shutdown_complete_cv.wait(lock, [] { return m_shutdown_complete; });
-}
 
 void S3File::S3Cache::Entry::Notify() {
 	std::unique_lock lk(m_parent.m_mutex);
